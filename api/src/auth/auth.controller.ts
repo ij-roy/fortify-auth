@@ -87,4 +87,23 @@ export class AuthController {
     res.append("Set-Cookie", clearCookie(RT_COOKIE, "/auth/refresh"));
     return res.status(200).json({ ok: true });
   }
+
+  @Post("refresh")
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    try {
+      const { RT_COOKIE } = this.auth.cookies();
+      const rt = (req.cookies?.[RT_COOKIE] as string) ?? "";
+
+      const { accessToken, refreshToken } = await this.auth.refreshSession(rt);
+
+      this.setAuthCookies(res, accessToken, refreshToken);
+      return res.status(200).json({ ok: true });
+    } catch {
+      const { AT_COOKIE, RT_COOKIE } = this.auth.cookies();
+
+      res.append("Set-Cookie", clearCookie(AT_COOKIE, "/"));
+      res.append("Set-Cookie", clearCookie(RT_COOKIE, "/auth/refresh"));
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  }
 }

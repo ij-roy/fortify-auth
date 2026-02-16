@@ -27,6 +27,15 @@ let SessionsRepo = class SessionsRepo {
        SET revoked_at=now()
        WHERE id=$1 AND revoked_at IS NULL`, [sessionId]);
     }
+    async isSessionRevoked(sessionId) {
+        const r = await this.db.query(`SELECT revoked_at FROM auth_sessions WHERE id=$1`, [sessionId]);
+        const row = r.rows[0];
+        return !row || row.revoked_at != null;
+    }
+    async getUserId(sessionId) {
+        const r = await this.db.query(`SELECT user_id FROM auth_sessions WHERE id=$1`, [sessionId]);
+        return r.rows[0]?.user_id ?? null;
+    }
 };
 exports.SessionsRepo = SessionsRepo;
 exports.SessionsRepo = SessionsRepo = __decorate([

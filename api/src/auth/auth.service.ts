@@ -32,6 +32,17 @@ export class AuthService {
     };
   }
 
+  private hashRefreshToken(rt: string): Buffer {
+    const cfg = this.tokenConfig();
+    return createHmac("sha256", cfg.rtHashSecret).update(rt).digest();
+  }
+
+  private async getUserIdFromSession(sessionId: string): Promise<string> {
+    const uid = await this.sessions.getUserId(sessionId);
+    if (!uid) throw new Error("SESSION_INVALID");
+    return uid;
+  }
+
   createCookieAttrs(path: string) {
     const secure = (process.env.COOKIE_SECURE ?? "false") === "true";
     return {
@@ -116,13 +127,66 @@ export class AuthService {
 
     const refreshToken = randomBytes(32).toString("base64url");
 
-    const tokenHash = createHmac("sha256", cfg.rtHashSecret)
-      .update(refreshToken)
-      .digest();
+    const tokenHash = this.hashRefreshToken(refreshToken);
 
     const expiresAt = new Date(Date.now() + cfg.rtTtl * 1000);
     await this.refresh.insertRefreshToken(sessionId, tokenHash, expiresAt, null);
 
     return { accessToken, refreshToken };
   }
+
+  async refreshSession(refreshToken: string) {
+    const cfg = this.tokenConfig();
+    if (!refreshToken) throw new Error("NO_RT");
+
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    const row = await this.refresh.findByHash(tokenHash);
+
+    if (!row) throw new Error("RT_INVALID");
+
+    const nowMs = Date.now();
+    if (row.revoked_at) throw new Error("RT_REVOKED");
+    if (new Date(row.expires_at).getTime() <= nowMs) throw new Error("RT_EXPIRED");
+
+    // reuse detection
+    if (row.used_at) {
+      await this.refresh.revokeAllForSession(row.session_id, "REUSE_DETECTED");
+      await this.sessions.revokeSession(row.session_id);
+      throw new Error("RT_REUSE");
+    }
+
+    // session revoked check
+    if (await this.sessions.isSessionRevoked(row.session_id)) {
+      throw new Error("SESSION_REVOKED");
+    }
+
+    // mark old as used
+    await this.refresh.markUsed(row.id);
+
+    const userId = await this.getUserIdFromSession(row.session_id);
+
+    // new access token
+    const now = Math.floor(Date.now() / 1000);
+    const accessToken = signToken(
+      {
+        sub: userId,
+        iat: now,
+        exp: now + cfg.atTtl,
+        iss: cfg.iss,
+        aud: cfg.aud,
+        type: "access",
+      },
+      cfg.tokenSecret
+    );
+
+    // new refresh token (opaque)
+    const newRt = randomBytes(32).toString("base64url");
+    const newHash = this.hashRefreshToken(newRt);
+    const expiresAt = new Date(Date.now() + cfg.rtTtl * 1000);
+
+    await this.refresh.insertRefreshToken(row.session_id, newHash, expiresAt, row.id);
+
+    return { accessToken, refreshToken: newRt };
+  }
+  
 }

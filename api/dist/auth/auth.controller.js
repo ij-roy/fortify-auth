@@ -77,7 +77,22 @@ let AuthController = class AuthController {
         // Step 3: clear cookies (DB revoke logic comes Step 3.7/3.8 wiring; Step 4 improves)
         res.append("Set-Cookie", (0, crypto_1.clearCookie)(AT_COOKIE, "/"));
         res.append("Set-Cookie", (0, crypto_1.clearCookie)(RT_COOKIE, "/auth/refresh"));
-        return res.json({ ok: true });
+        return res.status(200).json({ ok: true });
+    }
+    async refresh(req, res) {
+        try {
+            const { RT_COOKIE } = this.auth.cookies();
+            const rt = req.cookies?.[RT_COOKIE] ?? "";
+            const { accessToken, refreshToken } = await this.auth.refreshSession(rt);
+            this.setAuthCookies(res, accessToken, refreshToken);
+            return res.json({ ok: true });
+        }
+        catch {
+            const { AT_COOKIE, RT_COOKIE } = this.auth.cookies();
+            res.append("Set-Cookie", (0, crypto_1.clearCookie)(AT_COOKIE, "/"));
+            res.append("Set-Cookie", (0, crypto_1.clearCookie)(RT_COOKIE, "/auth/refresh"));
+            return res.status(401).json({ error: "Unauthorized" });
+        }
     }
 };
 exports.AuthController = AuthController;
@@ -115,6 +130,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Post)("refresh"),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "refresh", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)("auth"),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

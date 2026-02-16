@@ -5,6 +5,34 @@ import { DbService } from "../../db/db.service";
 export class RefreshRepo {
   constructor(private db: DbService) {}
 
+  async findByHash(tokenHash: Buffer) {
+    const r = await this.db.query(
+      `SELECT id, session_id, expires_at, used_at, revoked_at
+       FROM refresh_tokens
+       WHERE token_hash=$1`,
+      [tokenHash]
+    );
+    return r.rows[0] ?? null;
+  }
+
+  async markUsed(id: string) {
+    await this.db.query(
+      `UPDATE refresh_tokens
+       SET used_at=now()
+       WHERE id=$1 AND used_at IS NULL`,
+      [id]
+    );
+  }
+
+  async revokeAllForSession(sessionId: string, reason: string) {
+    await this.db.query(
+      `UPDATE refresh_tokens
+       SET revoked_at=now(), revoked_reason=$2
+       WHERE session_id=$1 AND revoked_at IS NULL`,
+      [sessionId, reason]
+    );
+  }
+
   async insertRefreshToken(
     sessionId: string,
     tokenHash: Buffer,
@@ -18,14 +46,5 @@ export class RefreshRepo {
       [sessionId, tokenHash, expiresAt, parentId ?? null]
     );
     return r.rows[0];
-  }
-
-  async revokeAllForSession(sessionId: string, reason: string) {
-    await this.db.query(
-      `UPDATE refresh_tokens
-       SET revoked_at=now(), revoked_reason=$2
-       WHERE session_id=$1 AND revoked_at IS NULL`,
-      [sessionId, reason]
-    );
   }
 }

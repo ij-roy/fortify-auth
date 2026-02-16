@@ -23,4 +23,21 @@ export class SessionsRepo {
       [sessionId]
     );
   }
+
+  async isSessionRevoked(sessionId: string) {
+    const r = await this.db.query(
+      `SELECT revoked_at FROM auth_sessions WHERE id=$1`,
+      [sessionId]
+    );
+    const row = r.rows[0];
+    return !row || row.revoked_at != null;
+  }
+
+  async getUserId(sessionId: string): Promise<string | null> {
+    const r = await this.db.query(
+      `SELECT user_id FROM auth_sessions WHERE id=$1`,
+      [sessionId]
+    );
+    return r.rows[0]?.user_id ?? null;
+  }
 }
