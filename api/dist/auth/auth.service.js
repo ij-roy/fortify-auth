@@ -156,6 +156,18 @@ let AuthService = class AuthService {
         await this.refresh.insertRefreshToken(row.session_id, newHash, expiresAt, row.id);
         return { accessToken, refreshToken: newRt };
     }
+    async logoutByRefreshToken(refreshToken) {
+        if (!refreshToken)
+            return;
+        const tokenHash = this.hashRefreshToken(refreshToken);
+        const row = await this.refresh.findByHash(tokenHash);
+        if (!row)
+            return;
+        // revoke all refresh tokens for that session
+        await this.refresh.revokeAllForSession(row.session_id, "LOGOUT");
+        // revoke session
+        await this.sessions.revokeSession(row.session_id);
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([

@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_service_1 = require("./auth.service");
+const origin_guard_1 = require("../common/origin.guard");
 const crypto_1 = require("./crypto");
 let AuthController = class AuthController {
     constructor(auth) {
@@ -74,10 +75,18 @@ let AuthController = class AuthController {
     }
     async logout(req, res) {
         const { AT_COOKIE, RT_COOKIE } = this.auth.cookies();
-        // Step 3: clear cookies (DB revoke logic comes Step 3.7/3.8 wiring; Step 4 improves)
+        try {
+            const rt = req.cookies?.[RT_COOKIE] ?? "";
+            if (rt) {
+                await this.auth.logoutByRefreshToken(rt);
+            }
+        }
+        catch {
+            // swallow errors — logout should always succeed
+        }
         res.append("Set-Cookie", (0, crypto_1.clearCookie)(AT_COOKIE, "/"));
         res.append("Set-Cookie", (0, crypto_1.clearCookie)(RT_COOKIE, "/auth/refresh"));
-        return res.status(200).json({ ok: true });
+        return res.json({ ok: true });
     }
     async refresh(req, res) {
         try {
@@ -139,6 +148,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 exports.AuthController = AuthController = __decorate([
+    (0, common_1.UseGuards)(origin_guard_1.OriginGuard),
     (0, common_1.Controller)("auth"),
     __metadata("design:paramtypes", [auth_service_1.AuthService])
 ], AuthController);

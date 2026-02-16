@@ -188,5 +188,18 @@ export class AuthService {
 
     return { accessToken, refreshToken: newRt };
   }
+  async logoutByRefreshToken(refreshToken: string) {
+    if (!refreshToken) return;
+
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    const row = await this.refresh.findByHash(tokenHash);
+    if (!row) return;
+
+    // revoke all refresh tokens for that session
+    await this.refresh.revokeAllForSession(row.session_id, "LOGOUT");
+
+    // revoke session
+    await this.sessions.revokeSession(row.session_id);
+  }
   
 }

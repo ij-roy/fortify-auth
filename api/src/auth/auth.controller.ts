@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { AuthService } from "./auth.service";
+import { OriginGuard } from "../common/origin.guard";
 import { serializeSetCookie, clearCookie, verifyToken } from "./crypto";
 
+@UseGuards(OriginGuard)
 @Controller("auth")
 export class AuthController {
   constructor(private auth: AuthService) {}
@@ -82,10 +84,18 @@ export class AuthController {
   async logout(@Req() req: Request, @Res() res: Response) {
     const { AT_COOKIE, RT_COOKIE } = this.auth.cookies();
 
-    // Step 3: clear cookies (DB revoke logic comes Step 3.7/3.8 wiring; Step 4 improves)
+    try {
+      const rt = (req.cookies?.[RT_COOKIE] as string) ?? "";
+      if (rt) {
+        await this.auth.logoutByRefreshToken(rt);
+      }
+    } catch {
+      // swallow errors — logout should always succeed
+    }
+
     res.append("Set-Cookie", clearCookie(AT_COOKIE, "/"));
     res.append("Set-Cookie", clearCookie(RT_COOKIE, "/auth/refresh"));
-    return res.status(200).json({ ok: true });
+    return res.json({ ok: true });
   }
 
   @Post("refresh")
