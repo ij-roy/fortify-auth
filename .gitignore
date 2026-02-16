@@ -1,2 +1,2 @@
-.env.example
 /api/node_modules
+api/.env
