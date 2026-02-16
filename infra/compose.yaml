@@ -21,8 +21,9 @@ services:
     build:
       context: ../api
       dockerfile: Dockerfile
+    env_file:
+      - ../api/.env
     environment:
-      DATABASE_URL: postgres://app:app@db:5432/app
       NODE_ENV: development
       API_PORT: 3001
     ports:
