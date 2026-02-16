@@ -85,7 +85,7 @@ let AuthController = class AuthController {
             const rt = req.cookies?.[RT_COOKIE] ?? "";
             const { accessToken, refreshToken } = await this.auth.refreshSession(rt);
             this.setAuthCookies(res, accessToken, refreshToken);
-            return res.json({ ok: true });
+            return res.status(200).json({ ok: true });
         }
         catch {
             const { AT_COOKIE, RT_COOKIE } = this.auth.cookies();

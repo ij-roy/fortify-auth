@@ -5,18 +5,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = void 0;
-const common_1 = require("@nestjs/common");
-const db_module_1 = require("./db/db.module");
-const auth_module_1 = require("./auth/auth.module");
-const health_controller_1 = require("./health.controller");
-let AppModule = class AppModule {
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-exports.AppModule = AppModule;
-exports.AppModule = AppModule = __decorate([
-    (0, common_1.Module)({
-        imports: [db_module_1.DbModule, auth_module_1.AuthModule],
-        controllers: [health_controller_1.HealthController],
-    })
-], AppModule);
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HealthController = void 0;
+const common_1 = require("@nestjs/common");
+let HealthController = class HealthController {
+    health() {
+        return { ok: true };
+    }
+};
+exports.HealthController = HealthController;
+__decorate([
+    (0, common_1.Get)("health"),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], HealthController.prototype, "health", null);
+exports.HealthController = HealthController = __decorate([
+    (0, common_1.Controller)()
+], HealthController);
